@@ -101,6 +101,8 @@ object HideAPK {
 
         private fun launchApp(): Unit = activity.get()?.run {
             val intent = packageManager.getLaunchIntentForPackage(pkg) ?: return
+            val uid = packageManager.getApplicationInfo(pkg, 0).uid
+            Shell.su("magiskhide add $uid $pkg").exec()
             Config.suManager = if (pkg == APPLICATION_ID) "" else pkg
             grantUriPermission(pkg, APK_URI, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             grantUriPermission(pkg, PREFS_URI, Intent.FLAG_GRANT_READ_URI_PERMISSION)

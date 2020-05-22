@@ -18,7 +18,6 @@ import com.topjohnwu.magisk.ktx.startActivity
 import com.topjohnwu.magisk.ktx.startActivityWithRoot
 import com.topjohnwu.magisk.ui.surequest.SuRequestActivity
 import com.topjohnwu.magisk.utils.Utils
-import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -44,16 +43,8 @@ object SuCallbackHandler {
         }
 
         when (action) {
-            REQUEST -> handleRequest(context, data)
             LOG -> handleLogging(context, data)
             NOTIFY -> handleNotify(context, data)
-            TEST -> {
-                val mode = data.getInt("mode", 2)
-                Shell.su(
-                    "magisk --connect-mode $mode",
-                    "magisk --use-broadcast"
-                ).submit()
-            }
         }
     }
 
@@ -88,7 +79,6 @@ object SuCallbackHandler {
 
         val pm = context.packageManager
         val policy = runCatching { fromUid.toPolicy(pm, allow) }.getOrElse {
-            GlobalScope.launch { ServiceLocator.policyDB.delete(fromUid) }
             fromUid.toUidPolicy(pm, allow)
         }
 
@@ -114,7 +104,6 @@ object SuCallbackHandler {
 
         val pm = context.packageManager
         val policy = runCatching { fromUid.toPolicy(pm, allow) }.getOrElse {
-            GlobalScope.launch { ServiceLocator.policyDB.delete(fromUid) }
             fromUid.toUidPolicy(pm, allow)
         }
         notify(context, policy)

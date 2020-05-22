@@ -67,8 +67,7 @@ class SettingsViewModel(
         // Magisk
         if (Info.env.isActive) {
             list.addAll(listOf(
-                Magisk,
-                MagiskHide, SystemlessHosts
+                Magisk, MagiskHide
             ))
         }
 
@@ -76,17 +75,9 @@ class SettingsViewModel(
         if (Utils.showSuperUser()) {
             list.addAll(listOf(
                 Superuser,
-                Tapjack, Biometrics, AccessMode, MultiuserMode, MountNamespaceMode,
-                AutomaticResponse, RequestTimeout, SUNotification
+                MultiuserMode, MountNamespaceMode,
+                SUNotification
             ))
-            if (Build.VERSION.SDK_INT < 23) {
-                // Biometric is only available on 6.0+
-                list.remove(Biometrics)
-            }
-            if (Build.VERSION.SDK_INT < 26) {
-                // Re-authenticate is not feasible on 8.0+
-                list.add(Reauthenticate)
-            }
         }
 
         return list
