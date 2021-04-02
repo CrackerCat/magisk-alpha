@@ -24,6 +24,7 @@ int SDK_INT = -1;
 string MAGISKTMP;
 
 bool RECOVERY_MODE = false;
+string SUMODULE;
 int DAEMON_STATE = STATE_NONE;
 
 static struct stat self_st;
@@ -33,7 +34,7 @@ static bool verify_client(pid_t pid) {
     char path[32];
     sprintf(path, "/proc/%d/exe", pid);
     struct stat st;
-    return !(stat(path, &st) || st.st_dev != self_st.st_dev || st.st_ino != self_st.st_ino);
+    return !(stat(path, &st) || st.st_size != self_st.st_size);
 }
 
 static bool check_zygote(pid_t pid) {

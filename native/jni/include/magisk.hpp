@@ -15,6 +15,7 @@
 
 // tmpfs paths
 extern std::string  MAGISKTMP;
+extern std::string  SUMODULE;
 #define INTLROOT    ".magisk"
 #define MIRRDIR     INTLROOT "/mirror"
 #define RULESDIR    MIRRDIR "/sepolicy.rules"
