@@ -621,15 +621,16 @@ copy_sepolicy_rules() {
     RULESDIR=/data/unencrypted/magisk
   elif grep -q ' /cache ' /proc/mounts; then
     RULESDIR=/cache/magisk
-  elif grep -q ' /metadata ' /proc/mounts; then
-    RULESDIR=/metadata/magisk
   elif grep -q ' /persist ' /proc/mounts; then
     RULESDIR=/persist/magisk
   elif grep -q ' /mnt/vendor/persist ' /proc/mounts; then
     RULESDIR=/mnt/vendor/persist/magisk
+  elif grep -q ' /metadata ' /proc/mounts; then
+    RULESDIR=/metadata/magisk
   else
     return
   fi
+  ui_print "- Sepolicy rules dir is $RULESDIR"
 
   # Copy all enabled sepolicy.rule
   for r in /data/adb/modules*/*/sepolicy.rule; do

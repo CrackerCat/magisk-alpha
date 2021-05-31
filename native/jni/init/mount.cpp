@@ -256,16 +256,6 @@ cache:
             goto metadata;
     }
     if (!do_mount("ext4"))
-        goto metadata;
-    custom_rules_dir = path + "/magisk"s;
-    goto success;
-
-metadata:
-    // Fallback to metadata
-    strcpy(blk_info.partname, "metadata");
-    strcpy(b, "/metadata");
-    strcpy(p, "/metadata");
-    if (setup_block(false) < 0 || !do_mount("ext4"))
         goto persist;
     custom_rules_dir = path + "/magisk"s;
     goto success;
@@ -275,6 +265,16 @@ persist:
     strcpy(blk_info.partname, "persist");
     strcpy(b, "/persist");
     strcpy(p, "/persist");
+    if (setup_block(false) < 0 || !do_mount("ext4"))
+        goto metadata;
+    custom_rules_dir = path + "/magisk"s;
+    goto success;
+
+metadata:
+    // Fallback to metadata
+    strcpy(blk_info.partname, "metadata");
+    strcpy(b, "/metadata");
+    strcpy(p, "/metadata");
     if (setup_block(false) < 0 || !do_mount("ext4"))
         return;
     custom_rules_dir = path + "/magisk"s;
