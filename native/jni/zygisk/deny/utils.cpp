@@ -23,8 +23,6 @@ static pthread_mutex_t data_lock = PTHREAD_MUTEX_INITIALIZER;
 
 atomic<bool> denylist_enforced = false;
 
-#define do_kill (zygisk_enabled && denylist_enforced)
-
 static void rebuild_map() {
     app_id_proc_map->clear();
     string data_path(APP_DATA_DIR);
@@ -70,8 +68,7 @@ static void rebuild_map() {
 // Leave /proc fd opened as we're going to read from it repeatedly
 static DIR *procfp;
 
-template<class F>
-static void crawl_procfs(F &&fn) {
+void crawl_procfs(const std::function<bool(int)> &fn) {
     rewinddir(procfp);
     dirent *dp;
     int pid;
@@ -148,7 +145,7 @@ static bool validate(const char *pkg, const char *proc) {
 static void add_hide_set(const char *pkg, const char *proc) {
     LOGI("denylist add: [%s/%s]\n", pkg, proc);
     deny_set->emplace(pkg, proc);
-    if (!do_kill)
+    if (!denylist_enforced)
         return;
     if (str_eql(pkg, ISOLATED_MAGIC)) {
         // Kill all matching isolated processes
@@ -322,6 +319,15 @@ static void update_deny_config() {
     db_err(err);
 }
 
+static int new_daemon_thread(void(*entry)()) {
+    thread_entry proxy = [](void *entry) -> void * {
+        reinterpret_cast<void(*)()>(entry)();
+        return nullptr;
+    };
+    return new_daemon_thread(proxy, (void *) entry);
+}
+
+
 int enable_deny() {
     if (denylist_enforced) {
         return DAEMON_SUCCESS;
@@ -345,8 +351,13 @@ int enable_deny() {
             return DAEMON_ERROR;
         }
 
+        if (!zygisk_enabled) {
+            if (new_daemon_thread(&proc_monitor))
+                return DAEMON_ERROR;
+        }
+
         // On Android Q+, also kill blastula pool and all app zygotes
-        if (SDK_INT >= 29 && zygisk_enabled) {
+        if (SDK_INT >= 29) {
             kill_process("usap32", true);
             kill_process("usap64", true);
             kill_process<&str_ends_safe>("_zygote", true);
@@ -361,6 +372,10 @@ int disable_deny() {
     if (denylist_enforced) {
         denylist_enforced = false;
         LOGI("* Disable DenyList\n");
+
+        if (!zygisk_enabled) {
+            pthread_kill(monitor_thread, SIGTERMTHRD);
+        }
 
         mutex_guard lock(data_lock);
         clear_data();
@@ -378,7 +393,13 @@ void initialize_denylist() {
     }
 }
 
-bool is_deny_target(int uid, string_view process) {
+void reset_sensitive_props() {
+    if (!zygisk_enabled && denylist_enforced) {
+        hide_sensitive_props();
+    }
+}
+
+bool is_deny_target(int uid, string_view process, int max_len) {
     mutex_guard lock(data_lock);
     if (!ensure_data())
         return false;
@@ -391,6 +412,8 @@ bool is_deny_target(int uid, string_view process) {
             return false;
 
         for (const auto &s : it->second) {
+            if (s.length() > max_len && process.length() > max_len && str_starts(s, process))
+                return true;
             if (str_starts(process, s))
                 return true;
         }
@@ -400,6 +423,8 @@ bool is_deny_target(int uid, string_view process) {
             return false;
 
         for (const auto &s : it->second) {
+            if (s.length() > max_len && process.length() > max_len && str_starts(s, process))
+                return true;
             if (s == process)
                 return true;
         }
