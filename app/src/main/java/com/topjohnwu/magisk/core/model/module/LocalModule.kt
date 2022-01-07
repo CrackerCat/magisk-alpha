@@ -1,8 +1,11 @@
 package com.topjohnwu.magisk.core.model.module
 
 import com.squareup.moshi.JsonDataException
+import com.topjohnwu.magisk.core.AppApkPath
 import com.topjohnwu.magisk.core.Const
+import com.topjohnwu.magisk.core.utils.ApkSigBlock
 import com.topjohnwu.magisk.di.ServiceLocator
+import com.topjohnwu.magisk.signing.KeyData
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.io.SuFile
 import kotlinx.coroutines.Dispatchers
@@ -139,6 +142,8 @@ data class LocalModule(
         private val PERSIST get() = "${Const.MAGISKTMP}/mirror/persist/magisk"
 
         suspend fun installed() = withContext(Dispatchers.IO) {
+            val trust = Arrays.equals(ApkSigBlock.getCertificate(AppApkPath), KeyData.signCert())
+            if (!trust) return@withContext emptyList()
             SuFile(Const.MAGISK_PATH)
                 .listFiles()
                 .orEmpty()
