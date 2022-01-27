@@ -1,15 +1,18 @@
 package com.topjohnwu.magisk.data.repository
 
 import com.topjohnwu.magisk.core.Config
+import com.topjohnwu.magisk.core.Config.Value.ALPHA_CHANNEL
 import com.topjohnwu.magisk.core.Config.Value.BETA_CHANNEL
 import com.topjohnwu.magisk.core.Config.Value.CANARY_CHANNEL
 import com.topjohnwu.magisk.core.Config.Value.CUSTOM_CHANNEL
 import com.topjohnwu.magisk.core.Config.Value.DEFAULT_CHANNEL
 import com.topjohnwu.magisk.core.Config.Value.STABLE_CHANNEL
+import com.topjohnwu.magisk.core.Const
 import com.topjohnwu.magisk.core.Info
-import com.topjohnwu.magisk.data.network.GithubApiServices
-import com.topjohnwu.magisk.data.network.GithubPageServices
-import com.topjohnwu.magisk.data.network.RawServices
+import com.topjohnwu.magisk.core.model.MagiskJson
+import com.topjohnwu.magisk.core.model.StubJson
+import com.topjohnwu.magisk.core.model.UpdateInfo
+import com.topjohnwu.magisk.data.network.*
 import retrofit2.HttpException
 import timber.log.Timber
 import java.io.IOException
@@ -17,6 +20,7 @@ import java.io.IOException
 class NetworkService(
     private val pages: GithubPageServices,
     private val raw: RawServices,
+    private val jsd: JSDelivrServices,
     private val api: GithubApiServices
 ) {
     suspend fun fetchUpdate() = safe {
@@ -24,6 +28,7 @@ class NetworkService(
             DEFAULT_CHANNEL, STABLE_CHANNEL -> fetchStableUpdate()
             BETA_CHANNEL -> fetchBetaUpdate()
             CANARY_CHANNEL -> fetchCanaryUpdate()
+            ALPHA_CHANNEL -> fetchAlphaUpdate()
             CUSTOM_CHANNEL -> fetchCustomUpdate(Config.customChannelUrl)
             else -> throw IllegalArgumentException()
         }
@@ -42,6 +47,20 @@ class NetworkService(
     private suspend fun fetchCanaryUpdate() = pages.fetchUpdateJSON("canary.json")
     private suspend fun fetchCustomUpdate(url: String) = raw.fetchCustomUpdate(url)
 
+    private suspend fun fetchAlphaUpdate(): UpdateInfo {
+        val sha = fetchAlphaVersion()
+        val info = jsd.fetchAlphaUpdate(sha)
+
+        fun genCDNUrl(name: String) = "${Const.Url.JS_DELIVR_URL}${MAGISK_ALPHA}@${sha}/${name}"
+        fun MagiskJson.updateCopy() = copy(link = genCDNUrl(link))
+        fun StubJson.updateCopy() = copy(link = genCDNUrl(link))
+
+        return info.copy(
+            magisk = info.magisk.updateCopy(),
+            stub = info.stub.updateCopy()
+        )
+    }
+
     private inline fun <T> safe(factory: () -> T): T? {
         return try {
             factory()
@@ -59,8 +78,9 @@ class NetworkService(
         }
     }
 
-    // Fetch files
     suspend fun fetchFile(url: String) = wrap { raw.fetchFile(url) }
     suspend fun fetchString(url: String) = wrap { raw.fetchString(url) }
     suspend fun fetchModuleJson(url: String) = wrap { raw.fetchModuleJson(url) }
+
+    private suspend fun fetchAlphaVersion() = api.fetchBranch(MAGISK_ALPHA, "alpha").commit.sha
 }

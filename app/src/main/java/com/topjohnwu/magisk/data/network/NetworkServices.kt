@@ -6,14 +6,23 @@ import com.topjohnwu.magisk.core.model.UpdateInfo
 import okhttp3.ResponseBody
 import retrofit2.http.*
 
+private const val REVISION = "revision"
 private const val BRANCH = "branch"
 private const val REPO = "repo"
 private const val FILE = "file"
+
+const val MAGISK_ALPHA = "vvb2060/magisk_files"
 
 interface GithubPageServices {
 
     @GET("{$FILE}")
     suspend fun fetchUpdateJSON(@Path(FILE) file: String): UpdateInfo
+}
+
+interface JSDelivrServices {
+
+    @GET("$MAGISK_ALPHA@{$REVISION}/alpha.json")
+    suspend fun fetchAlphaUpdate(@Path(REVISION) revision: String): UpdateInfo
 }
 
 interface RawServices {

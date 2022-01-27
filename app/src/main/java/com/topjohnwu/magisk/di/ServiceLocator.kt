@@ -47,6 +47,7 @@ object ServiceLocator {
         NetworkService(
             createApiService(retrofit, Const.Url.GITHUB_PAGE_URL),
             createApiService(retrofit, Const.Url.GITHUB_RAW_URL),
+            createApiService(retrofit, Const.Url.JS_DELIVR_URL),
             createApiService(retrofit, Const.Url.GITHUB_API_URL)
         )
     }
@@ -58,7 +59,7 @@ object ServiceLocator {
                 HomeViewModel::class.java -> HomeViewModel(networkService)
                 LogViewModel::class.java -> LogViewModel(logRepo)
                 SuperuserViewModel::class.java -> SuperuserViewModel(policyDB)
-                InstallViewModel::class.java -> InstallViewModel(networkService)
+                InstallViewModel::class.java -> InstallViewModel(context.resources)
                 SuRequestViewModel::class.java -> SuRequestViewModel(policyDB, timeoutPrefs)
                 else -> modelClass.newInstance()
             } as T
