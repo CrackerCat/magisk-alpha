@@ -6,7 +6,9 @@ import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
+import android.util.Log
 import com.topjohnwu.magisk.DynAPK
+import com.topjohnwu.magisk.Telemetry
 import com.topjohnwu.magisk.core.utils.*
 import com.topjohnwu.magisk.di.ServiceLocator
 import com.topjohnwu.superuser.Shell
@@ -14,7 +16,6 @@ import com.topjohnwu.superuser.internal.UiThreadHandler
 import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
-import kotlin.system.exitProcess
 
 open class App() : Application() {
 
@@ -29,11 +30,19 @@ open class App() : Application() {
 
     init {
         // Always log full stack trace with Timber
-        Timber.plant(Timber.DebugTree())
-        Thread.setDefaultUncaughtExceptionHandler { _, e ->
-            Timber.e(e)
-            exitProcess(1)
-        }
+        Timber.plant(object : Timber.DebugTree() {
+            override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+                super.log(priority, tag, message, t)
+                val properties = HashMap<String, String>()
+                properties.putAll(Info.properties)
+                if (t != null) {
+                    Telemetry.trackError(t, properties)
+                } else if (priority >= Log.WARN) {
+                    properties["message"] = message
+                    Telemetry.trackError(RuntimeException(), properties)
+                }
+            }
+        })
     }
 
     override fun attachBaseContext(context: Context) {
@@ -74,6 +83,9 @@ open class App() : Application() {
             UiThreadHandler.executor,
             RootRegistry.Connection
         )
+
+        Telemetry.start(this,  Info.properties.toString(), "properties")
+        Telemetry.trackEvent("App onCreate", Info.properties)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
